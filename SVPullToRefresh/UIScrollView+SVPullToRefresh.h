@@ -41,6 +41,7 @@ typedef NS_ENUM(NSUInteger, SVPullToRefreshState) {
 
 @property (nonatomic, strong) UIColor *arrowColor;
 @property (nonatomic, strong) UIColor *textColor;
+@property (nonatomic, assign) BOOL shouldHideUnderTranslucentNavigationBar;
 @property (nonatomic, strong, readonly) UILabel *titleLabel;
 @property (nonatomic, strong, readonly) UILabel *subtitleLabel;
 @property (nonatomic, strong, readwrite) UIColor *activityIndicatorViewColor NS_AVAILABLE_IOS(5_0);

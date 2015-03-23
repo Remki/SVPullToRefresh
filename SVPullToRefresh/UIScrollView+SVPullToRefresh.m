@@ -171,6 +171,12 @@ static char UIScrollViewPullToRefreshView;
 @synthesize titleLabel = _titleLabel;
 @synthesize dateLabel = _dateLabel;
 
+- (void)setShouldHideUnderTranslucentNavigationBar:(BOOL)shouldHideUnderTranslucentNavigationBar {
+    if (_shouldHideUnderTranslucentNavigationBar != shouldHideUnderTranslucentNavigationBar) {
+        self.alpha = shouldHideUnderTranslucentNavigationBar ? 0.0f : 1.0f;
+        _shouldHideUnderTranslucentNavigationBar = shouldHideUnderTranslucentNavigationBar;
+    }
+}
 
 - (id)initWithFrame:(CGRect)frame {
     if(self = [super initWithFrame:frame]) {
@@ -391,7 +397,7 @@ static char UIScrollViewPullToRefreshView;
     else if([keyPath isEqualToString:@"frame"]) {
         [self layoutSubviews];
     }
-    else if ([keyPath isEqualToString:@"contentInset"]) {
+    else if([keyPath isEqualToString:@"contentInset"]) {
         if (self.state != SVPullToRefreshStateLoading) {
             self.originalTopInset = self.scrollView.contentInset.top;
             self.originalBottomInset = self.scrollView.contentInset.bottom;
@@ -400,17 +406,39 @@ static char UIScrollViewPullToRefreshView;
 
 }
 
+- (void)adjustAlphaToVisiblePullToRefreshHeight:(CGFloat)pullToRefreshViewVisibleHeight {
+    if(self.shouldHideUnderTranslucentNavigationBar) {
+        static CGFloat alphaEquationVariableA = 0.0f;
+        static CGFloat alphaEquationVariableB = 0.0f;
+
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            CGFloat startRaisingAlphaAtPoint = 5.0f;
+            CGFloat reachMaximumAlphaAtPoint = 30.0f;
+
+            alphaEquationVariableA = 1.0f / (reachMaximumAlphaAtPoint - startRaisingAlphaAtPoint);
+            alphaEquationVariableB = -1.0f * (startRaisingAlphaAtPoint / (reachMaximumAlphaAtPoint - startRaisingAlphaAtPoint));
+        });
+
+        self.alpha = alphaEquationVariableA * pullToRefreshViewVisibleHeight + alphaEquationVariableB;
+    }
+}
+
 - (void)scrollViewDidScroll:(CGPoint)contentOffset {
     if(self.state != SVPullToRefreshStateLoading) {
         CGFloat scrollOffsetThreshold = 0;
+        CGFloat pullToRefreshViewVisibleHeight = 0;
         switch (self.position) {
             case SVPullToRefreshPositionTop:
                 scrollOffsetThreshold = self.frame.origin.y - self.originalTopInset;
+                pullToRefreshViewVisibleHeight = scrollOffsetThreshold + self.bounds.size.height - contentOffset.y;
                 break;
             case SVPullToRefreshPositionBottom:
                 scrollOffsetThreshold = MAX(self.scrollView.contentSize.height - self.scrollView.bounds.size.height, 0.0f) + self.bounds.size.height + self.originalBottomInset;
+                pullToRefreshViewVisibleHeight = contentOffset.y + self.bounds.size.height - scrollOffsetThreshold;
                 break;
         }
+        [self adjustAlphaToVisiblePullToRefreshHeight:pullToRefreshViewVisibleHeight];
         
         if(!self.scrollView.isDragging && self.state == SVPullToRefreshStateTriggered)
             self.state = SVPullToRefreshStateLoading;
